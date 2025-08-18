@@ -1,119 +1,168 @@
-// App.js
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import LoginForm from './components/LoginForm';
-import RegisterForm from './components/RegisterForm';
-import AdminDashboard from './page/AdminDashboard';
-import MyPage from './page/MyPage';
+import { useState, useEffect } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import LoginForm from "./components/LoginForm";
+import RegisterForm from "./components/RegisterForm";
+import AdminDashboard from "./page/AdminDashboard";
+import MyPage from "./page/MyPage";
+import RegionOverviewPage from "./components/RegionOverview/RegionOverviewPage";
+import MainHeader from "./components/MainHeader";
+import FestivalDetail from "./page/FestivalDetail"; // ★ 상세 페이지 본격 버전
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState({ username: '', roles: [] });
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [user, setUser] = useState({ username: "", roles: [] });
+    const navigate = useNavigate();
 
-  // 페이지 로드 시 JWT 토큰 체크
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1]));// JWT 디코딩
-        const roles = payload.roles || [];
-        setUser({ username: payload.sub, roles });
+    // 페이지 로드 시 JWT 토큰 체크
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split(".")[1])); // JWT 디코딩
+                const roles =
+                    Array.isArray(payload.roles)
+                        ? payload.roles
+                        : Array.isArray(payload.authorities)
+                        ? payload.authorities
+                        : payload.roles
+                        ? String(payload.roles).split(",")
+                        : [];
+                setUser({ username: payload.sub, roles });
+                setIsAuthenticated(true);
+            } catch (err) {
+                console.error("JWT parsing error:", err);
+                localStorage.removeItem("token");
+                setIsAuthenticated(false);
+                setUser({ username: "", roles: [] });
+            }
+        }
+    }, []);
+
+    const handleLogin = (userData, token) => {
+        localStorage.setItem("token", token);
+        const roles = Array.isArray(userData.roles)
+            ? userData.roles
+            : userData.roles
+            ? String(userData.roles).split(",")
+            : [];
+        setUser({ username: userData.username, roles });
         setIsAuthenticated(true);
-      } catch (err) {
-        console.error('JWT parsing error:', err);
-        localStorage.removeItem('token');
+
+        if (roles.includes("ROLE_ADMIN")) {
+            navigate("/admin", { replace: true });
+        } else {
+            navigate("/mypage", { replace: true });
+        }
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem("token");
         setIsAuthenticated(false);
-        setUser({ username: '', roles: [] });
-      }
-    }
-  }, []);
-  const handleLogin = (userData, token) => {
-    localStorage.setItem('token', token);
-    const roles = userData.roles ? userData.roles.split(',') : [];
-    setUser({ username: userData.username, roles });
-    setIsAuthenticated(true);
-  };
+        setUser({ username: "", roles: [] });
+        navigate("/overview", { replace: true });
+    };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setIsAuthenticated(false);
-    setUser({ username: '', roles: [] });
-  };
+    const isAdmin = user?.roles?.includes("ROLE_ADMIN");
 
-  return (
- <Router>
-    <Routes>
-      {/* 로그인 페이지 */}
-      <Route
-        path="/login"
-        element={
-          !isAuthenticated ? (
-            <LoginForm
-              onLogin={handleLogin}
-              onSwitchToRegister={() => <Navigate to="/register" replace />}
+    return (
+        <div>
+            <MainHeader
+                isAuthenticated={isAuthenticated}
+                isAdmin={isAdmin}
+                username={user?.username}
+                onLogout={handleLogout}
             />
-          ) : user?.roles?.includes('ROLE_ADMIN') ? (
-            <Navigate to="/admin" />
-          ) : (
-            <Navigate to="/mypage" />
-          )
-        }
-      />
 
-      {/* 회원가입 페이지 */}
-      <Route
-        path="/register"
-        element={
-          !isAuthenticated ? (
-            <RegisterForm onRegister={() => <Navigate to="/login" replace />} />
-          ) : (
-            <Navigate to="/" />
-          )
-        }
-      />
+            <Routes>
+                {/* 공개 페이지 */}
+                <Route path="/overview" element={<RegionOverviewPage />} />
 
-      {/* 관리자 페이지 */}
-      <Route
-        path="/admin"
-        element={
-          isAuthenticated && user?.roles?.includes('ROLE_ADMIN') ? (
-            <AdminDashboard onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" />
-          )
-        }
-      />
+                {/* 상세 페이지 */}
+                <Route path="/festival/:id" element={<FestivalDetail />} />
 
-      {/* 일반 사용자 페이지 */}
-      <Route
-        path="/mypage"
-        element={
-          isAuthenticated ? (
-            <MyPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" />
-          )
-        }
-      />
+                {/* 로그인 */}
+                <Route
+                    path="/login"
+                    element={
+                        !isAuthenticated ? (
+                            <LoginForm
+                                onLogin={handleLogin}
+                                onSwitchToRegister={() =>
+                                    navigate("/register", { replace: true })
+                                }
+                            />
+                        ) : isAdmin ? (
+                            <Navigate to="/admin" replace />
+                        ) : (
+                            <Navigate to="/mypage" replace />
+                        )
+                    }
+                />
 
-      {/* 루트 경로 */}
-      <Route
-        path="/"
-        element={
-          isAuthenticated ? (
-            user?.roles?.includes('ROLE_ADMIN') ? (
-              <Navigate to="/admin" />
-            ) : (
-              <Navigate to="/mypage" />
-            )
-          ) : (
-            <Navigate to="/login" />
-          )
-        }
-      />
-    </Routes>
-      </Router>
-  );
+                {/* 회원가입 */}
+                <Route
+                    path="/register"
+                    element={
+                        !isAuthenticated ? (
+                            <RegisterForm
+                                onRegister={() =>
+                                    navigate("/login", { replace: true })
+                                }
+                            />
+                        ) : (
+                            <Navigate
+                                to={isAdmin ? "/admin" : "/mypage"}
+                                replace
+                            />
+                        )
+                    }
+                />
+
+                {/* 관리자 */}
+                <Route
+                    path="/admin"
+                    element={
+                        isAuthenticated && isAdmin ? (
+                            <AdminDashboard onLogout={handleLogout} />
+                        ) : (
+                            <Navigate to="/login" replace />
+                        )
+                    }
+                />
+
+                {/* 마이페이지 */}
+                <Route
+                    path="/mypage"
+                    element={
+                        isAuthenticated ? (
+                            <MyPage onLogout={handleLogout} />
+                        ) : (
+                            <Navigate to="/login" replace />
+                        )
+                    }
+                />
+
+                {/* 루트 분기 */}
+                <Route
+                    path="/"
+                    element={
+                        isAuthenticated ? (
+                            isAdmin ? (
+                                <Navigate to="/admin" replace />
+                            ) : (
+                                <Navigate to="/mypage" replace />
+                            )
+                        ) : (
+                            <Navigate to="/overview" replace />
+                        )
+                    }
+                />
+
+                {/* 없는 경로 */}
+                <Route path="*" element={<Navigate to="/overview" replace />} />
+            </Routes>
+        </div>
+    );
 }
 
 export default App;
