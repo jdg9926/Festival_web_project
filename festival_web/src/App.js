@@ -5,8 +5,19 @@ import RegisterForm from "./components/RegisterForm";
 import AdminDashboard from "./page/AdminDashboard";
 import MyPage from "./page/MyPage";
 import RegionOverviewPage from "./components/RegionOverview/RegionOverviewPage";
-import MainHeader from "./components/MainHeader";
-import FestivalDetail from "./page/FestivalDetail"; // ★ 상세 페이지 본격 버전
+import MainHeader from "./components/common/MainHeader";
+import FestivalDetail from "./page/FestivalDetail";
+import MainPage from "./page/MainPage";
+
+// 게시판 관련
+import { BoardLayout } from "./board/BoardLayout";
+import { BoardList } from "./board/BoardList";
+import { BoardWrtie } from "./board/BoardWrite";
+import { BoardDetail } from "./board/BoardDetail";
+
+import { ReviewList } from "./board/ReviewList";
+import { ReviewWrtie } from "./board/ReviewWrtie";
+import { ReviewDetail } from "./board/ReviewDetail";
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -74,6 +85,8 @@ function App() {
             />
 
             <Routes>
+                {/* 메인 - 축제 리스트 */}
+                <Route path="/" element={<MainPage />} />
                 {/* 공개 페이지 */}
                 <Route path="/overview" element={<RegionOverviewPage />} />
 
@@ -157,6 +170,18 @@ function App() {
                         )
                     }
                 />
+
+                {/* 게시판 라우트 */}
+                <Route path='/board' element={<BoardLayout/>} >
+                <Route index element={<Navigate to='/board/0' />} />
+                <Route path=':categoryId' element={<BoardList />} />
+                <Route path=':categoryId/write' element={<BoardWrtie />} />
+                <Route path=':categoryId/detail/:boardId' element={<BoardDetail />} />
+
+                <Route path='review' element={<ReviewList />} />
+                <Route path='review/write' element={<ReviewWrtie />} />
+                <Route path='review/detail/:reviewId' element={<ReviewDetail />} />
+                </Route>
 
                 {/* 없는 경로 */}
                 <Route path="*" element={<Navigate to="/overview" replace />} />
